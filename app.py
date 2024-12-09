@@ -9,7 +9,9 @@ from io import BytesIO
 
 # -------------------- Load the Data -------------------- #
 file_path = "database.xlsx"
-df = pd.read_excel(file_path)
+df = pd.read_excel(file_path, dtype={'Climate Financing (%)': str,
+    'Adaptation (%)': str,
+    'Mitigation (%)':str})
 
 # Load hierarchy data
 hierarchy_file_path = "hierarchy.xlsx"
@@ -47,7 +49,12 @@ with tabs[2]:
     st.markdown(
         """
         <div style='font-family: Arial, sans-serif; font-size: 1rem; line-height: 1.6;'>
-            <p>The <strong>Governance Operations Analytics Tool (GoAT)</strong> allows for targeted searches...</p>
+            <p>The <strong> Governance Operations Analytics Tool (GoAT) </strong> allows for targeted searches in core fields of the World Bank’s three operation types. These encompass Development Policy Operations (DPO), Investment Project Lending (IPL), and Program for Results (PfoR). Clusters of keywords can be mapped to a particular thematic cluster of terms, for example, focused on Public Investment Management (PIM), public asset management (PAM), or State-Owned Enterprises (SOEs). The identified operations can also be an asset for the level of climate co-benefits (CCBs). GoAT also allows users to modify their thematic cluster of terms and vary the document sections considered in searches (e.g., PDOs and/or indicators or prior actions in DPOs). 
+
+<br/>The GoAT tool is being operated and maintained by the World Bank’s Global Community of Practice (CoP) for Public Infrastructure Investments and Asset Governance (PIIAG) (P179442). To the extent enabled by the World Bank’s public and internal data resources, the GoAT aims to provide a real-time view of the current state of Bank operations. These include Board Approved operations and upstream operations before Board approval (i.e., Concept and Appraisal). The GoAT initiative also progressively demonstrates how generative AI can be applied to a subset of relevant project information (e.g., all World Bank projects with a substantive focus on Public Asset Governance or a sub-type thereof).   
+
+<br/>The GoAT tool provides interfaces for both general and more data science-oriented users. The public version of GoAT offers a user-friendly interface. The GoAT tool was developed to demonstrate the power of Web Applications and Interactive Development Interface (IDE) codebooks as applied to gleaning operational intelligence from public investment financing data. In line with the World Bank’s commitment to public investment financing transparency, the recent GoAT interfaces in Table 1 have focused on leveraging openly accessible data through the World Bank’s Data Catalogue, mainly as implemented by Application Programming Interfaces (APIs). Where specific data is not yey available via public APIs, and/or is for official use only, the GoAT interfaces are deployed for official/internal access only.
+</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -114,7 +121,8 @@ with tabs[0]:
         st.metric(label="Total Number of Projects", value=total_projects)
 
         # Graph Tabs
-        graph_tabs = ["Project Status", "Lending Instrument", "Download Data", "Project View"]
+        #graph_tabs = ["Project Status", "Lending Instrument", "Download Data", "Project View"]
+        graph_tabs = ["Project Status", "Lending Instrument", "Download Data"]
         if 2 <= len(project_types) <= 4:
             graph_tabs.append("Keyword Search Venn")
 
@@ -154,7 +162,7 @@ with tabs[0]:
 
         # Venn Diagram Tab
         if 2 <= len(project_types) <= 4:
-            with graph_tabs[4]:
+            with graph_tabs[3]:
                 project_sets = {}
                 for keyword in project_types:
                     project_sets[keyword] = set(df[df[keyword] == 'Yes']['PROJ_ID'])
@@ -171,106 +179,6 @@ with tabs[0]:
                 )
                 plt.subplots_adjust(left=0.05, right=0.95, top=0.98, bottom=0.05)
                 st.pyplot(plt)
-
-        # Project View Tab
-        with graph_tabs[3]:
-            st.write("### Project Details")
-            search_query = st.text_input("Search for Project Name", placeholder="Enter project name or part of it")
-
-            if filtered_df.empty:
-                st.write("No projects found.")
-            else:
-                if search_query:
-                    search_results = filtered_df[
-                        filtered_df['PROJ_DISPLAY_NAME'].str.contains(search_query, case=False, na=False)
-                    ]
-                else:
-                    search_results = filtered_df
-
-                if search_results.empty:
-                    st.write("No projects match your search query.")
-                else:
-                    for index, row in search_results.iterrows():
-                        with st.expander(f"{row['PROJ_DISPLAY_NAME']} - Click to view details", expanded=False):
-                            st.markdown(
-                                f"""
-                                <div style='font-family: Arial, sans-serif; font-size: 1rem; line-height: 1.6; padding: 10px;'>
-                                    <p><strong>Project ID:</strong> {row['PROJ_ID']}</p>
-                                    <p><strong>Project Name:</strong> {row['PROJ_DISPLAY_NAME']}</p>
-                                    <p><strong>Approval Year:</strong> {row['PROJ_APPRVL_FY']}</p>
-                                    <p><strong>Status:</strong> {row['PROJ_STAT_NAME']}</p>
-                                    <p><strong>Lending Instrument:</strong> {row['LNDNG_INSTR_LONG_NAME']}</p>
-                                    <p><strong>Region:</strong> {row['Region']}</p>
-                                    <p><strong>Country:</strong> {row['CNTRY_SHORT_NAME']}</p>
-                                    <p><strong>Lead GP:</strong> {row['LEAD_GP_NAME']}</p>
-                                    <p><strong>Commitment Amount (USD):</strong> ${row['CMT_AMT']:,.2f}</p>
-                                </div>
-                                """,
-                                unsafe_allow_html=True,
-                            )
-
-                            # Green box for climate-related data in a single line
-                            st.markdown(
-                                f"""
-                                <div style='background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 5px; padding: 10px; margin-bottom: 10px;'>
-                                    <div style='font-size: 1rem; line-height: 1.6; display: flex; gap: 15px;'>
-                                        <span><strong>Climate Financing (%):</strong> {row['Climate Financing (%)']}</span>
-                                        <span><strong>Adaptation (%):</strong> {row['Adaptation (%)']}</span>
-                                        <span><strong>Mitigation (%):</strong> {row['Mitigation (%)']}</span>
-                                    </div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True,
-                            )
-
-                            # Indicators Section
-                            indicators = row['Indicators']
-
-                            if isinstance(indicators, str):
-                                if indicators.strip().lower() == "not available":
-                                    # Display "Not Available" in red
-                                    st.markdown(
-                                        f"""
-                                        <div style='font-family: Arial, sans-serif; font-size: 1rem; color: red;'>
-                                            <strong>Indicators:</strong> Not Available
-                                        </div>
-                                        """,
-                                        unsafe_allow_html=True,
-                                    )
-                                else:
-                                    # Try splitting the string into a list based on common delimiters
-                                    indicator_list = [item.strip().strip("[]'") for item in indicators.split(",") if item.strip()]
-                                    if indicator_list:
-                                        st.markdown(
-                                            "<strong>Indicators:</strong>",
-                                            unsafe_allow_html=True,
-                                        )
-                                        st.markdown(
-                                            "<ul style='font-family: Arial, sans-serif; font-size: 0.9rem; line-height: 1.6;'>" +
-                                            "".join([f"<li>{indicator}</li>" for indicator in indicator_list]) +
-                                            "</ul>",
-                                            unsafe_allow_html=True,
-                                        )
-                                    else:
-                                        # Fallback if splitting doesn't work
-                                        st.markdown(
-                                            f"""
-                                            <div style='font-family: Arial, sans-serif; font-size: 1rem; color: gray;'>
-                                                <strong>Indicators:</strong> Data not available or improperly formatted.
-                                            </div>
-                                            """,
-                                            unsafe_allow_html=True,
-                                        )
-                            else:
-                                # Fallback for non-string types
-                                st.markdown(
-                                    f"""
-                                    <div style='font-family: Arial, sans-serif; font-size: 1rem; color: gray;'>
-                                        <strong>Indicators:</strong> Data not available or improperly formatted.
-                                    </div>
-                                    """,
-                                    unsafe_allow_html=True,
-                                )
 
 # -------------------- Keywords Tab -------------------- #
 with tabs[1]:
