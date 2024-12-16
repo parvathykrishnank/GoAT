@@ -10,3 +10,5 @@ plotly
 pillow
 streamlit
 venn
+sqlalchemy
+psycopg2-binary
