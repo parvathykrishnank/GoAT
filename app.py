@@ -1,21 +1,50 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from venn import venn  # Importing venn library
+from venn import venn  
 import matplotlib.pyplot as plt
 from PIL import Image
 import base64
 from io import BytesIO
+from sqlalchemy import create_engine
+
+def keyword_search(df, hierarchy_name, keywords):
+    """
+    Searches for keywords in specified columns of a DataFrame and adds a 'Keyword Found' column.
+
+    Args:
+        df: The pandas DataFrame to search.
+        keywords: A set of keywords to search for.
+
+    Returns:
+        The DataFrame with an added 'Keyword Found' column.
+    """
+
+    keywords = keywords.split(',')
+
+    # Ensure the columns exist in the DataFrame
+    search_columns = ['Indicators', 'PriorActions', 'DLI_DLR', 'PROJ_OBJECTIVE_TEXT']
+    for col in search_columns:
+        if col not in df.columns:
+            raise ValueError(f"Column '{col}' is missing from the DataFrame.")
+
+    def check_keywords(row):
+        """Checks if any keywords appear in the specified columns of a row."""
+        for col in search_columns:
+            value = row[col]
+            if isinstance(value, str) and any(keyword.lower() in value.lower() for keyword in keywords):
+                return 'Yes'
+        return 'No'
+
+    # Apply the keyword search to each row
+    df[hierarchy_name] = df.apply(check_keywords, axis=1)
+    return df
+
 
 # -------------------- Load the Data -------------------- #
-file_path = "database.xlsx"
-df = pd.read_excel(file_path, dtype={'Climate Financing (%)': str,
-    'Adaptation (%)': str,
-    'Mitigation (%)':str})
-
-# Load hierarchy data
-hierarchy_file_path = "hierarchy.xlsx"
-hierarchy_df = pd.read_excel(hierarchy_file_path)
+engine = create_engine('postgresql://postgres:getdatabasemirra@128.199.226.170:5432/goat')
+df = pd.read_sql('SELECT * FROM projects', engine).drop_duplicates()
+hierarchy_df = pd.read_sql('SELECT * FROM hierarchy', engine)
 
 # -------------------- Streamlit App Configuration -------------------- #
 st.set_page_config(
@@ -220,8 +249,14 @@ with tabs[1]:
                         'Keyword': keywords_list
                     })
                     hierarchy_df = pd.concat([hierarchy_df, new_data], ignore_index=True)
-                    hierarchy_df.to_excel(hierarchy_file_path, index=False)
+                    hierarchy_df.to_sql('hierarchy', engine, if_exists='replace', index=False)
+
+                    df_combined = keyword_search(df, hierarchy_name, new_keywords)
+                    df_combined.to_sql('projects', engine, if_exists='replace', index=False)
                     st.success(f"Keywords added successfully to hierarchy '{hierarchy_name}'.")
+                    
+                    # Refresh the app
+                    st.rerun() 
 
     # Delete Hierarchy Tab
     with keyword_tabs[2]:
@@ -229,6 +264,8 @@ with tabs[1]:
 
         if st.button("Delete Hierarchy"):
             hierarchy_df = hierarchy_df[hierarchy_df["Hierarchy Name"] != hierarchy_to_delete]
-            hierarchy_df.to_excel(hierarchy_file_path, index=False)
+            hierarchy_df.to_sql('hierarchy', engine, if_exists='replace', index=False)
             st.success(f"Hierarchy '{hierarchy_to_delete}' deleted successfully.")
+            # Refresh the app
+            st.rerun() 
 
