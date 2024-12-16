@@ -20,7 +20,8 @@ def keyword_search(df, hierarchy_name, keywords):
         The DataFrame with an added 'Keyword Found' column.
     """
 
-    keywords = keywords.split(',')
+    # Split the keywords by commas and strip any surrounding whitespace
+    keywords = [keyword.strip() for keyword in keywords.split(',')]
 
     # Ensure the columns exist in the DataFrame
     search_columns = ['Indicators', 'PriorActions', 'DLI_DLR', 'PROJ_OBJECTIVE_TEXT']
